@@ -1,7 +1,36 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import fs from 'fs/promises';
+import path from 'path';
 import logger from './utils/logger.js';
+
+const promptCache = new Map<string, string>();
+
+async function loadPromptTemplate(name: string): Promise<string> {
+  if (promptCache.has(name)) return promptCache.get(name)!;
+  const filePath = path.join(process.cwd(), 'prompts', `${name}.md`);
+  try {
+    const content = await fs.readFile(filePath, 'utf8');
+    promptCache.set(name, content);
+    return content;
+  } catch (err) {
+    logger.error(
+      `[prompt] failed to load template "${name}": ${(err as Error).message}`,
+    );
+    throw err;
+  }
+}
+
+function renderTemplate(
+  template: string,
+  vars: Record<string, string | undefined>,
+): string {
+  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, key: string) => {
+    const v = vars[key];
+    return typeof v === 'string' ? v : '';
+  });
+}
 
 export type ServerConfig = {
   name?: string;
@@ -41,29 +70,21 @@ export class Server {
           context: z.string().optional(),
         },
       },
-      async ({ description, context }) => ({
-        content: [
-          {
-            type: 'text',
-            text:
-              `You are assisting with Spec-Driven Development. Based on the following description and context, produce a crisp, testable specification.\n\n` +
-              `Description:\n${description}\n\n` +
-              (context ? `Context:\n${context}\n\n` : '') +
-              `If there are any uncertainties or missing details, ask targeted clarifying questions and discuss with the user. Iterate until all major doubts are resolved. Only then write the final specification suitable for saving to: SPEC.md\n\n` +
-              `Output sections:\n` +
-              `- Overview\n` +
-              `- Goals\n` +
-              `- Non-Goals\n` +
-              `- Scope and Constraints\n` +
-              `- Functional Requirements\n` +
-              `- Non-Functional Requirements\n` +
-              `- Risks & Mitigations\n` +
-              `- Acceptance Criteria (bullet points)\n` +
-              `- Open Questions (list to clarify with the user)\n` +
-              `Keep it concise and actionable.`,
-          },
-        ],
-      }),
+      async ({ description, context }) => {
+        const template = await loadPromptTemplate('specify');
+        const text = renderTemplate(template, {
+          description,
+          context_block: context ? `Context:\n${context}\n\n` : '',
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text,
+            },
+          ],
+        };
+      },
     );
 
     // 注册工具：plan（实现计划）
@@ -74,28 +95,21 @@ export class Server {
         description: 'Create an implementation plan from the specification',
         inputSchema: { spec: z.string(), preferences: z.string().optional() },
       },
-      async ({ spec, preferences }) => ({
-        content: [
-          {
-            type: 'text',
-            text:
-              `Create a pragmatic implementation plan from the specification below.\n\n` +
-              `Specification:\n${spec}\n\n` +
-              `Preferences:\n${preferences ?? '(none)'}\n\n` +
-              `If there are any ambiguities, risks, or missing information, ask concise clarifying questions and discuss with the user. Iterate until all concerns are addressed. Once clarified, write the final plan suitable for saving to: PLAN.md\n\n` +
-              `Include sections:\n` +
-              `- Architecture and Components\n` +
-              `- Technology Choices (with rationale)\n` +
-              `- Data Model / API Contracts\n` +
-              `- Integration Points and External Dependencies\n` +
-              `- Milestones and Sequencing\n` +
-              `- Testing & Validation Strategy\n` +
-              `- Rollout and Backout Plan\n` +
-              `- Risks and Mitigations\n` +
-              `Use clear headings and keep it implementation-oriented.`,
-          },
-        ],
-      }),
+      async ({ spec, preferences }) => {
+        const template = await loadPromptTemplate('plan');
+        const text = renderTemplate(template, {
+          spec,
+          preferences_block: `Preferences:\n${preferences ?? '(none)'}\n\n`,
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text,
+            },
+          ],
+        };
+      },
     );
 
     // 注册工具：tasks（任务分解）
@@ -106,41 +120,18 @@ export class Server {
         description: 'Break the plan into implementable, testable tasks',
         inputSchema: { spec: z.string(), plan: z.string() },
       },
-      async ({ spec, plan }) => ({
-        content: [
-          {
-            type: 'text',
-            text:
-              `Using the specification and plan below, produce a tasks breakdown as JSON ONLY (no prose).\n\n` +
-              `Specification:\n${spec}\n\n` +
-              `Plan:\n${plan}\n\n` +
-              `The JSON will be written to: TASKS.json\n\n` +
-              `Output an array of task objects with the following fields:\n` +
-              `- id (e.g., "T1")\n` +
-              `- title\n` +
-              `- summary\n` +
-              `- rationale\n` +
-              `- steps (array of concise steps)\n` +
-              `- files (paths or patterns; include new files if needed)\n` +
-              `- acceptance_tests (clear, executable checks)\n` +
-              `- dependencies (array of task ids)\n` +
-              `- estimate (e.g., "1-2h")\n` +
-              `- risk ("low" | "medium" | "high")\n` +
-              `- validation (how this task will be verified; see guidance below)\n` +
-              `- status ("todo" | "in_progress" | "blocked" | "done")\n` +
-              `Status meanings:\n` +
-              `- todo: not started yet\n` +
-              `- in_progress: currently being worked on\n` +
-              `- blocked: waiting on a dependency or external factor\n` +
-              `- done: completed and passes acceptance tests\n` +
-              `Validation guidance:\n` +
-              `- Specify method: "unit" | "integration" | "e2e" | "manual"\n` +
-              `- Provide exact procedure/commands and required environment setup\n` +
-              `- Define expected outputs, pass criteria, and any artifacts (e.g., test reports)\n` +
-              `Each task should be independently testable and scoped for a single focused change. Respond with valid JSON only.`,
-          },
-        ],
-      }),
+      async ({ spec, plan }) => {
+        const template = await loadPromptTemplate('tasks');
+        const text = renderTemplate(template, { spec, plan });
+        return {
+          content: [
+            {
+              type: 'text',
+              text,
+            },
+          ],
+        };
+      },
     );
 
     // 通过 stdio 连接
