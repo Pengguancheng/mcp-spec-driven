@@ -1,4 +1,4 @@
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
@@ -8,10 +8,9 @@ export type ServerConfig = {
 };
 
 export class Server {
-  private running = false;
   public readonly name: string;
   public readonly version: string;
-
+  private running = false;
   private mcp?: McpServer;
   private transport?: StdioServerTransport;
 
@@ -39,25 +38,127 @@ export class Server {
       },
       async ({ a, b }) => ({
         content: [{ type: 'text', text: String(a + b) }],
-      })
+      }),
     );
 
-    // 注册动态问候资源：greeting
-    this.mcp.registerResource(
-      'greeting',
-      new ResourceTemplate('greeting://{name}', { list: undefined }),
+    // 注册提示词：specify（规格说明）
+    this.mcp.registerPrompt(
+      'specify',
       {
-        title: 'Greeting Resource',
-        description: 'Dynamic greeting generator',
+        title: 'Specify',
+        description:
+          'Elicit requirements and produce a clear, testable specification',
+        argsSchema: { description: z.string(), context: z.string().optional() },
       },
-      async (uri, { name }) => ({
-        contents: [
+      ({ description, context }) => ({
+        messages: [
           {
-            uri: uri.href,
-            text: `Hello, ${name}!`,
+            role: 'user',
+            content: {
+              type: 'text',
+              text:
+                `You are assisting with Spec-Driven Development. Based on the following description and context, produce a crisp, testable specification.\n\n` +
+                `Description:\n${description}\n\n` +
+                (context ? `Context:\n${context}\n\n` : '') +
+                `Write the final specification suitable for saving to: SPEC.md\n\n` +
+                `Output sections:\n` +
+                `- Overview\n` +
+                `- Goals\n` +
+                `- Non-Goals\n` +
+                `- Scope and Constraints\n` +
+                `- Functional Requirements\n` +
+                `- Non-Functional Requirements\n` +
+                `- Risks & Mitigations\n` +
+                `- Acceptance Criteria (bullet points)\n` +
+                `- Open Questions (list to clarify with the user)\n` +
+                `Keep it concise and actionable.`,
+            },
           },
         ],
-      })
+      }),
+    );
+
+    // 注册提示词：plan（实现计划）
+    this.mcp.registerPrompt(
+      'plan',
+      {
+        title: 'Plan',
+        description: 'Create an implementation plan from the specification',
+        argsSchema: { spec: z.string(), preferences: z.string().optional() },
+      },
+      ({ spec, preferences }) => ({
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text:
+                `Create a pragmatic implementation plan from the specification below.\n\n` +
+                `Specification:\n${spec}\n\n` +
+                `Preferences:\n${preferences ?? '(none)'}\n\n` +
+                `Write the final plan suitable for saving to: PLAN.md\n\n` +
+                `Include sections:\n` +
+                `- Architecture and Components\n` +
+                `- Technology Choices (with rationale)\n` +
+                `- Data Model / API Contracts\n` +
+                `- Integration Points and External Dependencies\n` +
+                `- Milestones and Sequencing\n` +
+                `- Testing & Validation Strategy\n` +
+                `- Rollout and Backout Plan\n` +
+                `- Risks and Mitigations\n` +
+                `Use clear headings and keep it implementation-oriented.`,
+            },
+          },
+        ],
+      }),
+    );
+
+    // 注册提示词：tasks（任务分解）
+    this.mcp.registerPrompt(
+      'tasks',
+      {
+        title: 'Tasks',
+        description: 'Break the plan into implementable, testable tasks',
+        argsSchema: { spec: z.string(), plan: z.string() },
+      },
+      ({ spec, plan }) => ({
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text:
+                `Using the specification and plan below, produce a tasks breakdown as JSON ONLY (no prose).\n\n` +
+                `Specification:\n${spec}\n\n` +
+                `Plan:\n${plan}\n\n` +
+                `The JSON will be written to: TASKS.json\n\n` +
+                `Output an array of task objects with the following fields:\n` +
+                `- id (e.g., "T1")\n` +
+                `- title\n` +
+                `- summary\n` +
+                `- rationale\n` +
+                `- steps (array of concise steps)\n` +
+                `- files (paths or patterns; include new files if needed)\n` +
+                `- acceptance_tests (clear, executable checks)\n` +
+                `- dependencies (array of task ids)\n` +
+                `- estimate (e.g., "1-2h")\n` +
+                `- risk ("low" | "medium" | "high")\n` +
+                `- validation (how this task will be verified; see guidance below)\n` +
+                `- status ("todo" | "in_progress" | "blocked" | "done")\n` +
+                `Status meanings:\n` +
+                `- todo: not started yet\n` +
+                `- in_progress: currently being worked on\n` +
+                `- blocked: waiting on a dependency or external factor\n` +
+                `- done: completed and passes acceptance tests\n` +
+                `Validation guidance:\n` +
+                `- Specify method: "unit" | "integration" | "e2e" | "manual"\n` +
+                `- Provide exact procedure/commands and required environment setup\n` +
+                `- Define expected outputs, pass criteria, and any artifacts (e.g., test reports)\n` +
+                `Each task should be independently testable and scoped for a single focused change. Respond with valid JSON only.`,
+            },
+          },
+        ],
+      }),
     );
 
     // 通过 stdio 连接
@@ -76,7 +177,9 @@ export class Server {
     // 这里标记停止并记录日志。
     this.running = false;
     // eslint-disable-next-line no-console
-    console.log(`[${this.name}] MCP stdio server stopped (transport lifecycle managed by host).`);
+    console.log(
+      `[${this.name}] MCP stdio server stopped (transport lifecycle managed by host).`,
+    );
   }
 
   isRunning(): boolean {

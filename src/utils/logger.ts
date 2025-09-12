@@ -29,17 +29,20 @@ const colors = {
 winston.addColors(colors);
 
 // Define the format for console output
-const consoleFormat = winston.format.combine(
+winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.colorize({ all: true }),
-  winston.format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`)
+  winston.format.printf(
+    (info) => `${info.timestamp} ${info.level}: ${info.message}`,
+  ),
 );
-
 // Define the format for file output (without colors)
 const fileFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.colorize({ all: true }),
-  winston.format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`)
+  winston.format.printf(
+    (info) => `${info.timestamp} ${info.level}: ${info.message}`,
+  ),
 );
 
 // Define log file paths
