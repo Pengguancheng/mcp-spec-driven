@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import logger from './utils/logger.js';
 
 export type ServerConfig = {
   name?: string;
@@ -60,7 +61,7 @@ export class Server {
                 `You are assisting with Spec-Driven Development. Based on the following description and context, produce a crisp, testable specification.\n\n` +
                 `Description:\n${description}\n\n` +
                 (context ? `Context:\n${context}\n\n` : '') +
-                `Write the final specification suitable for saving to: SPEC.md\n\n` +
+                `If there are any uncertainties or missing details, ask targeted clarifying questions and discuss with the user. Iterate until all major doubts are resolved. Only then write the final specification suitable for saving to: SPEC.md\n\n` +
                 `Output sections:\n` +
                 `- Overview\n` +
                 `- Goals\n` +
@@ -96,7 +97,7 @@ export class Server {
                 `Create a pragmatic implementation plan from the specification below.\n\n` +
                 `Specification:\n${spec}\n\n` +
                 `Preferences:\n${preferences ?? '(none)'}\n\n` +
-                `Write the final plan suitable for saving to: PLAN.md\n\n` +
+                `If there are any ambiguities, risks, or missing information, ask concise clarifying questions and discuss with the user. Iterate until all concerns are addressed. Once clarified, write the final plan suitable for saving to: PLAN.md\n\n` +
                 `Include sections:\n` +
                 `- Architecture and Components\n` +
                 `- Technology Choices (with rationale)\n` +
@@ -166,8 +167,7 @@ export class Server {
     await this.mcp.connect(this.transport);
 
     this.running = true;
-    // eslint-disable-next-line no-console
-    console.log(`[${this.name}] MCP stdio server started.`);
+    logger.info(`[${this.name}] MCP stdio server started.`);
   }
 
   stop(): void {
@@ -176,8 +176,7 @@ export class Server {
     // 目前 StdioServerTransport 在大多数宿主环境下由宿主管理生命周期。
     // 这里标记停止并记录日志。
     this.running = false;
-    // eslint-disable-next-line no-console
-    console.log(
+    logger.info(
       `[${this.name}] MCP stdio server stopped (transport lifecycle managed by host).`,
     );
   }
