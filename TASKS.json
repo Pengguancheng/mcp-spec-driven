@@ -1,0 +1,230 @@
+[
+  {
+    "id": "T1",
+    "title": "建立設定檔 Schema 與型別",
+    "summary": "以 Zod 定義 .guidelinesrc.json 的結構與約束，並導出對應 TypeScript 型別",
+    "rationale": "根據 SPEC 的 Domain Model 與驗證規則，schema 為所有後續 loader/工具的單一事實來源，確保輸入結構與錯誤訊息一致可測。",
+    "steps": [
+      "建立 src/config/schema.ts 並定義 ConfigRoot/Defaults/ProjectConfig/TargetConfig 的 Zod schema",
+      "在 language/category 等欄位加入 ^[a-z0-9-]+$ pattern",
+      "對 absoluteProjectDir/targetDirAbs 以自訂 refine 驗證絕對路徑",
+      "導出推導型別與 schema 常量，供他模組使用",
+      "撰寫單元測試覆蓋合法與非法案例及錯誤訊息"
+    ],
+    "files": [
+      "src/config/schema.ts",
+      "__tests__/config/schema.test.ts"
+    ],
+    "acceptance_tests": [
+      "npm test -- __tests__/config/schema.test.ts",
+      "非法輸入（錯誤 category、相對路徑）能得到預期錯誤訊息",
+      "合法輸入能成功 parse 並產出型別安全的結果"
+    ],
+    "dependencies": [],
+    "estimate": "2-3h",
+    "risk": "medium",
+    "validation": {
+      "method": "unit",
+      "procedure": "npm install && npm test -- __tests__/config/schema.test.ts",
+      "expected": "所有測試綠燈，錯誤訊息與 SPEC 一致"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T2",
+    "title": "正規化與驗證輔助（normalize/assert/filename）",
+    "summary": "實作 normalizeId/assertAbsolute/validateTargetFileName 等輔助函式",
+    "rationale": "將大小寫規則、命名 pattern、絕對路徑檢查與檔名合法性抽離為可測單元，提高可讀性與重用性。",
+    "steps": [
+      "建立 src/config/normalize.ts，實作 normalizeId/assertAbsolute/validateTargetFileName",
+      "normalizeId：toLowerCase、空白→-、檢查 ^[a-z0-9-]+$",
+      "assertAbsolute：使用 path.isAbsolute 檢查",
+      "validateTargetFileName：不可含分隔符，允許常見副檔名",
+      "撰寫單測覆蓋大小寫、空白、非法字元與路徑案例"
+    ],
+    "files": [
+      "src/config/normalize.ts",
+      "__tests__/config/normalize.test.ts"
+    ],
+    "acceptance_tests": [
+      "npm test -- __tests__/config/normalize.test.ts",
+      "非法字元與相對路徑能被拒絕並回傳可讀錯誤",
+      "合法案例可通過"
+    ],
+    "dependencies": [
+      "T1"
+    ],
+    "estimate": "1-2h",
+    "risk": "low",
+    "validation": {
+      "method": "unit",
+      "procedure": "npm test -- __tests__/config/normalize.test.ts",
+      "expected": "所有分支被覆蓋並通過"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T3",
+    "title": "設定檔載入與展開（loader）",
+    "summary": "實作 loader：載入 configPath 或 configObject，解析基準目錄與專案根，展開 targets",
+    "rationale": "把原始設定轉換為可直接喂給 placer 的請求清單，是 apply-config 的核心依賴。",
+    "steps": [
+      "建立 src/config/loader.ts，匯入 schema 與 normalize 輔助",
+      "決定相對路徑基準：以設定檔所在目錄為優先，否則用 process.cwd()",
+      "解析專案根優先序：absoluteProjectDir > packages/<name> > repo 根",
+      "展開 projects[].targets[] → 產生標準化的 place 請求",
+      "撰寫單測覆蓋相對路徑、優先序、targetDirAbs 覆寫"
+    ],
+    "files": [
+      "src/config/loader.ts",
+      "__tests__/config/loader.test.ts"
+    ],
+    "acceptance_tests": [
+      "npm test -- __tests__/config/loader.test.ts",
+      "不同輸入案例可產生穩定一致的展開結果",
+      "錯誤輸入會有可操作的英文錯誤訊息"
+    ],
+    "dependencies": [
+      "T1",
+      "T2"
+    ],
+    "estimate": "2-3h",
+    "risk": "medium",
+    "validation": {
+      "method": "unit",
+      "procedure": "npm test -- __tests__/config/loader.test.ts",
+      "expected": "展開邏輯與 SPEC 規則一致，各分支覆蓋"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T4",
+    "title": "補齊/實作 guidelines-placer（安全寫入執行器）",
+    "summary": "若專案尚未提供，新增 src/tools/guidelines-placer.ts，提供 dry-run/backup/force/checksum 行為",
+    "rationale": "PLAN 假設已存在 placer，但目前程式碼庫未見，需要補齊以支撐 apply-config 與後續測試。",
+    "steps": [
+      "建立 src/tools/guidelines-placer.ts，匯出 placeGuidelines API（命名匯出）",
+      "實作狀態：added/updated/skipped/conflict 與摘要統計",
+      "支援 dryRun/backup/force 與 managed header + sha256 checksum",
+      "以 tmp 目錄撰寫白箱單測覆蓋寫入行為與衝突處理"
+    ],
+    "files": [
+      "src/tools/guidelines-placer.ts",
+      "__tests__/tools/guidelines-placer.test.ts"
+    ],
+    "acceptance_tests": [
+      "npm test -- __tests__/tools/guidelines-placer.test.ts",
+      "dry-run 僅回報不寫入；backup 時會建立 .backups 子目錄；force 可覆寫且統計正確",
+      "受管標記含 checksum，重跑無變更時為 skipped"
+    ],
+    "dependencies": [
+      "T1",
+      "T2"
+    ],
+    "estimate": "3-4h",
+    "risk": "medium",
+    "validation": {
+      "method": "unit",
+      "procedure": "npm test -- __tests__/tools/guidelines-placer.test.ts",
+      "expected": "行為與 SPEC 匹配，I/O 分支覆蓋"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T5",
+    "title": "apply-config 工具（批次執行與彙總）",
+    "summary": "新增 src/tools/guidelines-apply-config.ts，調用 loader + placer，回傳 per-target 與 overall 總結",
+    "rationale": "提供以設定檔驅動的批次落盤能力，是 SPEC 中主要操作面。",
+    "steps": [
+      "建立 src/tools/guidelines-apply-config.ts，定義輸入/輸出介面（英文命名）",
+      "串接 loader 取得 targets，迭代呼叫 placeGuidelines",
+      "彙整每個 target 的 summary 與 overall 統計",
+      "撰寫單測驗證 dry-run/backup/force 的統計彙總"
+    ],
+    "files": [
+      "src/tools/guidelines-apply-config.ts",
+      "__tests__/tools/guidelines-apply-config.test.ts"
+    ],
+    "acceptance_tests": [
+      "npm test -- __tests__/tools/guidelines-apply-config.test.ts",
+      "多 target 情境可正確彙總 added/updated/skipped/conflict",
+      "錯誤輸入能給出 actionable 英文訊息"
+    ],
+    "dependencies": [
+      "T3",
+      "T4"
+    ],
+    "estimate": "2-3h",
+    "risk": "medium",
+    "validation": {
+      "method": "unit",
+      "procedure": "npm test -- __tests__/tools/guidelines-apply-config.test.ts",
+      "expected": "所有路徑分支測試通過"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T6",
+    "title": "MCP 伺服器整合 applyConfig 工具",
+    "summary": "在 src/server.ts 註冊 guidelines.applyConfig，定義 Zod input schema 並回傳結果",
+    "rationale": "對外提供標準化的 MCP 端點以便於工具與自動化流程呼叫。",
+    "steps": [
+      "於 src/server.ts 新增工具註冊，名稱 guidelines.applyConfig",
+      "定義 input schema：tool/configPath/configObject/overrides",
+      "導入 apply-config 模組並回傳結果，錯誤訊息使用英文",
+      "撰寫基本回歸測試：工具可被呼叫且返回結構正確"
+    ],
+    "files": [
+      "src/server.ts",
+      "__tests__/server-apply-config.test.ts"
+    ],
+    "acceptance_tests": [
+      "npm test -- __tests__/server-apply-config.test.ts",
+      "模擬呼叫返回目標與 overall 統計，結構鍵名精確匹配",
+      "錯誤路徑可回傳 actionable 訊息"
+    ],
+    "dependencies": [
+      "T5"
+    ],
+    "estimate": "1-2h",
+    "risk": "low",
+    "validation": {
+      "method": "integration",
+      "procedure": "以 Jest 模擬呼叫工具 handler 並斷言輸入/輸出 schema",
+      "expected": "handler 正常回傳、錯誤案例具體明確"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T7",
+    "title": "文件與範例設定檔",
+    "summary": "新增 docs/examples/.guidelinesrc.sample.json 與常見錯誤清單，補充 README 片段",
+    "rationale": "提供最小可行示例與錯誤對照，降低落地與除錯成本。",
+    "steps": [
+      "建立 docs/examples/.guidelinesrc.sample.json，涵蓋單倉/monorepo、targetDirAbs 覆寫與 fileNameByTool",
+      "在 README 或 docs 補充使用說明（不引入 E2E）",
+      "列出常見錯誤訊息與排查建議"
+    ],
+    "files": [
+      "docs/examples/.guidelinesrc.sample.json",
+      "README.md",
+      "docs/**/*.md"
+    ],
+    "acceptance_tests": [
+      "以 schema 驗證 sample JSON 可通過",
+      "README/docs 連結與檔名正確（簡單鏈接檢查）"
+    ],
+    "dependencies": [
+      "T1",
+      "T3"
+    ],
+    "estimate": "1-2h",
+    "risk": "low",
+    "validation": {
+      "method": "manual",
+      "procedure": "以本地打開檔案檢視並用 schema 單測驗證 sample JSON",
+      "expected": "示例可被 loader 正確解析"
+    },
+    "status": "done"
+  }
+]

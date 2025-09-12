@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "defaults": {
+    "addManagedHeader": true,
+    "dryRun": true,
+    "backup": true,
+    "force": false
+  },
+  "projects": [
+    {
+      "name": "repo-root",
+      "targets": [
+        {
+          "language": "golang",
+          "category": "project",
+          "sourcePath": "docs/golang/project.md",
+          "defaultFileName": "README.md",
+          "fileNameByTool": {
+            "codex-cli": "AGENTS.md"
+          }
+        }
+      ]
+    },
+    {
+      "name": "package-foo",
+      "packageName": "foo",
+      "targets": [
+        {
+          "language": "typescript",
+          "category": "repository",
+          "sourcePath": "../shared/repo-guidelines.md",
+          "targetDirAbs": "/opt/workspace/packages/foo/guidelines/typescript/codex-cli/repository"
+        }
+      ]
+    },
+    {
+      "name": "external-abs",
+      "absoluteProjectDir": "/opt/services/bar",
+      "targets": [
+        {
+          "language": "python",
+          "category": "handler",
+          "sourcePath": "/opt/specs/handler.md"
+        }
+      ]
+    }
+  ]
+}

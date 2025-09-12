@@ -4,6 +4,11 @@ import { z } from 'zod';
 import fs from 'fs/promises';
 import path from 'path';
 import logger from './utils/logger.js';
+import {
+  applyConfig as applyConfigRunner,
+  type ApplyConfigInput,
+  type ApplyConfigResult,
+} from './tools/guidelines-apply-config.js';
 
 const promptCache = new Map<string, string>();
 
@@ -134,6 +139,88 @@ export class Server {
       },
     );
 
+    // 注册工具：guidelines.applyConfig（批次套用設定檔）
+    this.mcp.registerTool(
+      'guidelines.applyConfig',
+      {
+        title: 'Guidelines Apply Config',
+        description: 'Batch apply guidelines based on the config file/object',
+        inputSchema: {
+          tool: z.string(),
+          configPath: z.string().optional(),
+          configObject: z.any().optional(),
+          overrides: z
+            .object({
+              addManagedHeader: z.boolean().optional(),
+              dryRun: z.boolean().optional(),
+              backup: z.boolean().optional(),
+              force: z.boolean().optional(),
+            })
+            .strict()
+            .optional(),
+        },
+      },
+      async (args) => {
+        try {
+          const result = await runApplyConfigTool(args as ApplyConfigInput);
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          };
+        } catch (err) {
+          const msg = (err as Error).message || 'unknown error';
+          logger.error(`[apply-config] failed: ${msg}`);
+          throw err;
+        }
+      },
+    );
+
+    // 注册工具：guidelines.applyLanguage（僅以語言套用預設設定）
+    this.mcp.registerTool(
+      'guidelines.applyLanguage',
+      {
+        title: 'Guidelines Apply by Language',
+        description: 'Apply predefined guidelines config by language only',
+        inputSchema: {
+          language: z.string(),
+          overrides: z
+            .object({
+              addManagedHeader: z.boolean().optional(),
+              dryRun: z.boolean().optional(),
+              backup: z.boolean().optional(),
+              force: z.boolean().optional(),
+            })
+            .strict()
+            .optional(),
+        },
+      },
+      async ({ language, overrides }) => {
+        try {
+          const lang = String(language).trim().toLowerCase();
+          // 預設 config 路徑：docs/examples/guidelines-<language>.json
+          const configPath = path.join(
+            process.cwd(),
+            'docs',
+            'examples',
+            `guidelines-${lang}.json`,
+          );
+          // 預設工具識別：codex-cli（符合本專案用途）
+          const toolId = 'codex-cli';
+          const result = await runApplyConfigTool({
+            tool: toolId,
+            configPath,
+            overrides,
+          });
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          };
+        } catch (err) {
+          const msg = (err as Error).message || 'unknown error';
+          logger.error(`[apply-language] failed: ${msg}`);
+          throw err;
+        }
+      },
+    );
+
     // 通过 stdio 连接
     this.transport = new StdioServerTransport();
     await this.mcp.connect(this.transport);
@@ -190,4 +277,13 @@ export async function startServer(config: ServerConfig = {}): Promise<Server> {
   const server = new Server(config);
   await server.start();
   return server;
+}
+
+/**
+ * 導出可測試的執行函式（不依賴 MCP 連線）
+ */
+export async function runApplyConfigTool(
+  args: ApplyConfigInput,
+): Promise<ApplyConfigResult> {
+  return applyConfigRunner(args);
 }
