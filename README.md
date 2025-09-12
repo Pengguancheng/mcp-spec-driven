@@ -79,7 +79,7 @@
     - `src/config/loader.ts`：載入設定（檔案/物件），決定基準目錄與專案根，展開 targets。
     - `src/tools/guidelines-placer.ts`：安全寫入執行器（dry-run/backup/force/受管標記+checksum）。
     - `src/tools/guidelines-apply-config.ts`：批次執行（串接 loader + placer）並彙總結果。
-    - `src/server.ts`：已註冊 MCP 工具 `guidelines.applyConfig`。
+  - `src/server.ts`：已註冊 MCP 工具 `guidelines.applyGolang`。
 
 - 流程總覽
     1) 準備設定檔（建議：`docs/examples/.guidelinesrc.sample.json` 為參考）。
@@ -89,16 +89,13 @@
     5) 回傳 per-target 與 overall 統計（`added/updated/skipped/conflict`）。
     6) 建議先以 `dryRun: true` 驗證，必要時開啟 `backup: true` 再配合 `force: true` 覆寫。
 
-- MCP 工具：`guidelines.applyConfig`
+- MCP 工具：`guidelines.applyGolang`
     - Input（Zod schema）：
-        - `tool: string`
-        - `configPath?: string`
-        - `configObject?: unknown`
+        - `projectPath: string`（必須為絕對路徑）
         - `overrides?: { addManagedHeader?: boolean; dryRun?: boolean; backup?: boolean; force?: boolean }`
-    - Output：
-        -
-        `{ configBaseDir: string, targets: Array<{ projectName, language, tool, category, targetBaseDir, summary }>, overall: { added, updated, skipped, conflict } }`
-    - 說明：若同時提供 `configPath` 與 `configObject`，優先採用 `configObject`（內部已支援）。
+    - 行為：讀取 `settings/guidelines-golang.json`，為每個 project 注入 `absoluteProjectDir=projectPath`，再呼叫內部的
+      `applyConfig` runner。
+    - Output：結構同 `apply-config` 模組回傳（overall 與 per-target 統計）。
 
 - 程式內呼叫範例（TypeScript/ESM）
   ```ts
@@ -139,4 +136,4 @@
     - loader：`npm test -- __tests__/config/loader.test.ts`
     - placer：`npm test -- __tests__/tools/guidelines-placer.test.ts`
     - apply-config：`npm test -- __tests__/tools/guidelines-apply-config.test.ts`
-    - MCP 工具整合：`npm test -- __tests__/server-apply-config.test.ts`
+  - （無）MCP 工具整合測試：目前未提供對 `guidelines.applyGolang` 的端對端測試。

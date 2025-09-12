@@ -6,7 +6,7 @@
   AI coding tool（例如 Codex CLI、JetBrains AI…）× 類別（project/repository/handler/domain-model）」的維度，放置到正確的目錄結構中。
 - MVP 範圍：僅負責「放置」與「安全更新」；不自動產生內容、不從既有文件抽取/合成內容。
 - 支援單一倉庫與 monorepo（packages/*）。
-- 提供 MCP tools：`guidelines.applyConfig` 與 `guidelines.applyLanguage`。
+- 提供 MCP tool：`guidelines.applyGolang`、`guidelines.applyDotnetframework`。
 
 ## Goals
 
@@ -160,26 +160,30 @@
         - `targetRelPath = relative(projectRootDir, join(targetBaseDir, targetFileName))`；
         - 呼叫 placer 時傳入：`{ targetProjectDirAbs: projectRootDir, targetRelPath }`。
 
-6) MCP tools
+-
+    6) MCP tools
 
-- `guidelines.applyConfig`
+- `guidelines.applyGolang`
+    - 目的：僅需提供「目標專案路徑」，即套用 Golang 的預設 guidelines 設定。
+    - 預設設定檔位置：`settings/guidelines-golang.json`。
     - Input：
-        - `tool: string` — 工具識別（例如 `codex-cli`）。
-        - `configPath?: string` — 設定檔路徑（JSON），或改用 `configObject`。
-        - `configObject?: unknown` — 直接提供已解析物件。
-        - `overrides?: { addManagedHeader?: boolean; dryRun?: boolean; backup?: boolean; force?: boolean }`
-    - Output：整體與 per-target 的新增/更新/跳過/衝突統計與目標路徑。
-
-- `guidelines.applyLanguage`
-    - 目的：僅需提供「語言」與「目標專案路徑」，即套用預設的該語言 guidelines 設定。
-    - 預設設定檔位置：`settings/guidelines-<language>.json`。
-    - Input：
-        - `language: string` — 程式語言（小寫/中線）。
         - `projectPath: string` — 目標專案路徑（必須為絕對路徑；若為相對路徑，將回報錯誤）。
         - `overrides?: { addManagedHeader?: boolean; dryRun?: boolean; backup?: boolean; force?: boolean }`
-    - 行為：載入預設設定，將其中每個 project 注入 `absoluteProjectDir=projectPath`（並清空 `packageName` 以避免歧義），再呼叫
-      `applyConfig`。
-    - Output：等同 `guidelines.applyConfig`。
+    - 行為：載入 Golang 預設設定，將其中每個 project 注入 `absoluteProjectDir=projectPath`（並清空 `packageName` 以避免歧義），再呼叫
+      內部的 `apply-config` runner。
+    - Output：等同 `apply-config` 模組輸出結構（overall 與 per-target 統計）。
+
+- `guidelines.applyDotnetframework`
+    - 目的：僅需提供「專案名稱」與「目標專案路徑」，即套用 .NET Framework 的預設 guidelines 設定，並依名稱置換相對路徑。
+    - 預設設定檔位置：`settings/guidelines-dotnetframework.json`。
+    - Input：
+        - `projectName: string` — 專案名稱；將置換設定中的 `{{projectName}}` 佔位符。
+        - `projectPath: string` — 目標專案路徑（必須為絕對路徑；若為相對路徑，將回報錯誤）。
+        - `overrides?: { addManagedHeader?: boolean; dryRun?: boolean; backup?: boolean; force?: boolean }`
+    - 行為：載入預設設定，將其中每個 project 注入 `absoluteProjectDir=projectPath`（並清空 `packageName` 以避免歧義），
+      並將所有 `targets[].targetRelPath` 的 `{{projectName}}` 佔位符替換為 `projectName` 後，呼叫內部的 `apply-config`
+      runner。
+    - Output：等同 `apply-config` 模組輸出結構（overall 與 per-target 統計）。
 
 6) 回報與可觀測性
 
@@ -208,7 +212,8 @@
     - 指定專案位置（`packageName` 或 `absoluteProjectDir`）；
     - 覆寫目標目錄絕對路徑（`targetDirAbs`）；
     - 指定單一 guidelines Markdown 檔案路徑（`sourcePath`）。
-- PLAN.md 與 SPEC.md 與實作一致，文件包含 `guidelines.applyLanguage` 的 `projectPath` 參數定義與行為說明。
+- PLAN.md 與 SPEC.md 與實作一致，文件包含 `guidelines.applyGolang` 的 `projectPath` 與 `guidelines.applyDotnetframework`
+  的 `projectName`/`projectPath` 參數定義與行為說明。
 
 ## Open Questions
 

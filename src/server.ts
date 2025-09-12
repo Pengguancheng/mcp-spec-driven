@@ -7,7 +7,7 @@ import logger from './utils/logger.js';
 import {
   applyConfig as applyConfigRunner,
   type ApplyConfigInput,
-  type ApplyConfigResult,
+  type ApplyConfigResult
 } from './tools/guidelines-apply-config.js';
 
 const promptCache = new Map<string, string>();
@@ -139,50 +139,16 @@ export class Server {
       },
     );
 
-    // 注册工具：guidelines.applyConfig（批次套用設定檔）
-    this.mcp.registerTool(
-      'guidelines.applyConfig',
-      {
-        title: 'Guidelines Apply Config',
-        description: 'Batch apply guidelines based on the config file/object',
-        inputSchema: {
-          tool: z.string(),
-          configPath: z.string().optional(),
-          configObject: z.any().optional(),
-          overrides: z
-            .object({
-              addManagedHeader: z.boolean().optional(),
-              dryRun: z.boolean().optional(),
-              backup: z.boolean().optional(),
-              force: z.boolean().optional(),
-            })
-            .strict()
-            .optional(),
-        },
-      },
-      async (args) => {
-        try {
-          const result = await runApplyConfigTool(args as ApplyConfigInput);
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-          };
-        } catch (err) {
-          const msg = (err as Error).message || 'unknown error';
-          logger.error(`[apply-config] failed: ${msg}`);
-          throw err;
-        }
-      },
-    );
+    //（已移除）guidelines.applyConfig 工具不再在此註冊
 
-    // 注册工具：guidelines.applyLanguage（以語言 + 專案路徑套用預設設定）
+    // 注册工具：guidelines.applyGolang（以 Golang + 專案路徑套用預設設定）
     this.mcp.registerTool(
-      'guidelines.applyLanguage',
+      'guidelines.applyGolang',
       {
-        title: 'Guidelines Apply by Language',
+        title: 'Guidelines Apply Golang',
         description:
-          'Apply predefined guidelines config by language and project path',
+          'Apply predefined golang guidelines config by project path',
         inputSchema: {
-          language: z.string(),
           projectPath: z.string(),
           overrides: z
             .object({
@@ -195,16 +161,17 @@ export class Server {
             .optional(),
         },
       },
-      async ({ language, projectPath, overrides }) => {
+      async ({ projectPath, overrides }) => {
         try {
-          const lang = String(language).trim().toLowerCase();
+          // 固定語言為 golang，無需外部參數
+          const lang = 'golang';
           const projPathRaw = String(projectPath || '').trim();
           // 嚴格要求：必須為絕對路徑，若為相對路徑直接回報錯誤
           if (!path.isAbsolute(projPathRaw)) {
             throw new Error('projectPath must be an absolute path');
           }
           const projAbs = projPathRaw;
-          // 預設 config 路徑：settings/guidelines-<language>.json
+          // 預設 config 路徑：settings/guidelines-golang.json
           // 使用模組檔案位置推導專案根，避免受啟動時的 CWD 影響
           const configPath = path.join(
             process.cwd(),
@@ -238,7 +205,89 @@ export class Server {
           };
         } catch (err) {
           const msg = (err as Error).message || 'unknown error';
-          logger.error(`[apply-language] failed: ${msg}`);
+          logger.error(`[apply-golang] failed: ${msg}`);
+          throw err;
+        }
+      },
+    );
+
+    // 注册工具：guidelines.applyDotnetframework（以 .NET Framework + 專案路徑與專案名稱套用預設設定）
+    this.mcp.registerTool(
+      'guidelines.applyDotnetframework',
+      {
+        title: 'Guidelines Apply Dotnetframework',
+        description:
+          'Apply predefined dotnetframework guidelines config by project path and name',
+        inputSchema: {
+          projectName: z.string(),
+          projectPath: z.string(),
+          overrides: z
+            .object({
+              addManagedHeader: z.boolean().optional(),
+              dryRun: z.boolean().optional(),
+              backup: z.boolean().optional(),
+              force: z.boolean().optional(),
+            })
+            .strict()
+            .optional(),
+        },
+      },
+      async ({ projectName, projectPath, overrides }) => {
+        try {
+          const lang = 'dotnetframework';
+          const projName = String(projectName || '').trim();
+          const projPathRaw = String(projectPath || '').trim();
+          if (!projName) {
+            throw new Error('projectName is required');
+          }
+          // 嚴格要求：必須為絕對路徑，若為相對路徑直接回報錯誤
+          if (!path.isAbsolute(projPathRaw)) {
+            throw new Error('projectPath must be an absolute path');
+          }
+          const projAbs = projPathRaw;
+          // 預設 config 路徑：settings/guidelines-dotnetframework.json
+          const configPath = path.join(
+            process.cwd(),
+            'settings',
+            `guidelines-${lang}.json`,
+          );
+          const raw = await fs.readFile(configPath, 'utf8');
+          const cfg = JSON.parse(raw);
+          if (!cfg || !Array.isArray(cfg.projects)) {
+            throw new Error('Invalid language config: projects not found');
+          }
+          // 置換 targetRelPath 中的 {{projectName}} 佔位符
+          const replaceProjectName = (s: string): string =>
+            s.replace(/\{\{\s*projectName\s*\}\}/g, projName);
+
+          const cfgWithProject = {
+            ...cfg,
+            projects: cfg.projects.map((p: any) => ({
+              ...p,
+              absoluteProjectDir: projAbs,
+              packageName: undefined,
+              targets: Array.isArray(p.targets)
+                ? p.targets.map((t: any) => ({
+                    ...t,
+                    targetRelPath: replaceProjectName(String(t.targetRelPath)),
+                  }))
+                : p.targets,
+            })),
+          };
+
+          // 預設工具識別：codex-cli（符合本專案用途）
+          const toolId = 'codex-cli';
+          const result = await runApplyConfigTool({
+            tool: toolId,
+            configObject: cfgWithProject,
+            overrides,
+          });
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          };
+        } catch (err) {
+          const msg = (err as Error).message || 'unknown error';
+          logger.error(`[apply-dotnetframework] failed: ${msg}`);
           throw err;
         }
       },

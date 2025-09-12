@@ -10,65 +10,42 @@
     {
       "name": "repo-root",
       "targets": [
-        {
-          "language": "dotnetframework",
-          "category": "applibs",
-          "sourcePath": "guidelines/dotnetframework/applibs.md",
-          "targetRelPath": "applibs/AGENTS.md"
-        },
-        {
-          "language": "dotnetframework",
-          "category": "app-context",
-          "sourcePath": "guidelines/dotnetframework/app_context.md",
-          "targetRelPath": "app/AGENTS.md"
-        },
-        {
-          "language": "dotnetframework",
-          "category": "config",
-          "sourcePath": "guidelines/dotnetframework/config.md",
-          "targetRelPath": "config/AGENTS.md"
-        },
+
         {
           "language": "dotnetframework",
           "category": "domain-model",
           "sourcePath": "guidelines/dotnetframework/domain_model.md",
-          "targetRelPath": "domain/model/AGENTS.md"
+          "targetRelPath": "{{projectName}}.Domain/Model/AGENTS.md"
         },
         {
           "language": "dotnetframework",
           "category": "domain-repository",
           "sourcePath": "guidelines/dotnetframework/domain_repository.md",
-          "targetRelPath": "domain/repository/AGENTS.md"
+          "targetRelPath": "{{projectName}}.Domain/Repository/AGENTS.md"
         },
         {
           "language": "dotnetframework",
           "category": "handler",
           "sourcePath": "guidelines/dotnetframework/handler.md",
-          "targetRelPath": "handler/AGENTS.md"
+          "targetRelPath": "{{projectName}}.Ap/Handler/AGENTS.md"
         },
         {
           "language": "dotnetframework",
           "category": "persistent-mongo",
           "sourcePath": "guidelines/dotnetframework/persistent_mongo.md",
-          "targetRelPath": "persistent/persistent_mongo/AGENTS.md"
+          "targetRelPath": "{{projectName}}.Persistent/Mongo/AGENTS.md"
         },
         {
           "language": "dotnetframework",
           "category": "procedure",
           "sourcePath": "guidelines/dotnetframework/procedure.md",
-          "targetRelPath": "procedure/AGENTS.md"
+          "targetRelPath": "{{projectName}}.Ap/Procedure/AGENTS.md"
         },
         {
           "language": "dotnetframework",
           "category": "project",
-          "sourcePath": "guidelines/dotnetframework/project_simple.md",
+          "sourcePath": "guidelines/dotnetframework/project.md",
           "targetRelPath": "AGENTS.md"
-        },
-        {
-          "language": "dotnetframework",
-          "category": "proto",
-          "sourcePath": "guidelines/dotnetframework/proto.md",
-          "targetRelPath": "proto/AGENTS.md"
         }
       ]
     }

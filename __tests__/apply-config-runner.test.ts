@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { runApplyConfigTool } from '../src/server.js';
 
-describe('server tool: guidelines.applyConfig', () => {
+describe('apply-config runner (internal)', () => {
   test('returns structured results and aggregates overall', async () => {
     const tmpFile = path.join(process.cwd(), 'a.md');
     await fs.writeFile(tmpFile, 'Hello', 'utf8');

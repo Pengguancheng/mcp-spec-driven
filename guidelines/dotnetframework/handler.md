@@ -23,7 +23,7 @@ public class VideoUploadEventHandler : IRabbitMqPubSubHandler
         catch (Exception ex)
         {
             logger.LogError(ex, $"處理影片上傳事件失敗: {ex.Message}");
-            return false;
+            return true;
         }
     }
 }
