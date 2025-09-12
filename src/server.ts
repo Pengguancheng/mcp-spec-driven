@@ -166,6 +166,32 @@ export class Server {
     this.transport = new StdioServerTransport();
     await this.mcp.connect(this.transport);
 
+    // 处理宿主关闭管道导致的 EPIPE/写入已结束错误，平滑退出
+    const handleStdIoError = (err: unknown) => {
+      const e = err as NodeJS.ErrnoException;
+      if (
+        e &&
+        (e.code === 'EPIPE' || e.code === 'ERR_STREAM_WRITE_AFTER_END')
+      ) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[${this.name}] stdio closed by host (${e.code}). Exiting gracefully.`,
+        );
+        process.exit(0);
+      }
+    };
+    process.stdout.on('error', handleStdIoError);
+    process.stderr.on('error', handleStdIoError);
+
+    // 当宿主关闭 stdin 时退出
+    const handleStdinClose = () => {
+      // eslint-disable-next-line no-console
+      console.warn(`[${this.name}] stdin closed by host. Exiting gracefully.`);
+      process.exit(0);
+    };
+    process.stdin.on('close', handleStdinClose);
+    process.stdin.on('end', handleStdinClose);
+
     this.running = true;
     logger.info(`[${this.name}] MCP stdio server started.`);
   }

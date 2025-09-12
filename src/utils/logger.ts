@@ -75,14 +75,8 @@ const transports: winston.transport[] = [
 if ((process.env.NODE_ENV || '').toLowerCase() !== 'test') {
   transports.push(
     new winston.transports.File({
-      filename: path.join(logDir, 'error.log'),
-      level: 'error',
-      maxsize: 5 * 1024 * 1024, // 5MB
-      maxFiles: 5,
-      format: fileFormat,
-    }),
-    new winston.transports.File({
-      filename: path.join(logDir, 'combined.log'),
+      // 單一檔案收所有等級，不再依等級切分
+      filename: path.join(logDir, 'app.log'),
       maxsize: 5 * 1024 * 1024, // 5MB
       maxFiles: 5,
       format: fileFormat,
