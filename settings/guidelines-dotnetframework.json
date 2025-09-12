@@ -11,63 +11,63 @@
       "name": "repo-root",
       "targets": [
         {
-          "language": "golang",
+          "language": "dotnetframework",
           "category": "applibs",
-          "sourcePath": "guidelines/golang/applibs.md",
+          "sourcePath": "guidelines/dotnetframework/applibs.md",
           "targetRelPath": "applibs/AGENTS.md"
         },
         {
-          "language": "golang",
+          "language": "dotnetframework",
           "category": "app-context",
-          "sourcePath": "guidelines/golang/app_context.md",
+          "sourcePath": "guidelines/dotnetframework/app_context.md",
           "targetRelPath": "app/AGENTS.md"
         },
         {
-          "language": "golang",
+          "language": "dotnetframework",
           "category": "config",
-          "sourcePath": "guidelines/golang/config.md",
+          "sourcePath": "guidelines/dotnetframework/config.md",
           "targetRelPath": "config/AGENTS.md"
         },
         {
-          "language": "golang",
+          "language": "dotnetframework",
           "category": "domain-model",
-          "sourcePath": "guidelines/golang/domain_model.md",
+          "sourcePath": "guidelines/dotnetframework/domain_model.md",
           "targetRelPath": "domain/model/AGENTS.md"
         },
         {
-          "language": "golang",
+          "language": "dotnetframework",
           "category": "domain-repository",
-          "sourcePath": "guidelines/golang/domain_repository.md",
+          "sourcePath": "guidelines/dotnetframework/domain_repository.md",
           "targetRelPath": "domain/repository/AGENTS.md"
         },
         {
-          "language": "golang",
+          "language": "dotnetframework",
           "category": "handler",
-          "sourcePath": "guidelines/golang/handler.md",
+          "sourcePath": "guidelines/dotnetframework/handler.md",
           "targetRelPath": "handler/AGENTS.md"
         },
         {
-          "language": "golang",
+          "language": "dotnetframework",
           "category": "persistent-mongo",
-          "sourcePath": "guidelines/golang/persistent_mongo.md",
+          "sourcePath": "guidelines/dotnetframework/persistent_mongo.md",
           "targetRelPath": "persistent/persistent_mongo/AGENTS.md"
         },
         {
-          "language": "golang",
+          "language": "dotnetframework",
           "category": "procedure",
-          "sourcePath": "guidelines/golang/procedure.md",
+          "sourcePath": "guidelines/dotnetframework/procedure.md",
           "targetRelPath": "procedure/AGENTS.md"
         },
         {
-          "language": "golang",
+          "language": "dotnetframework",
           "category": "project",
-          "sourcePath": "guidelines/golang/project.md",
+          "sourcePath": "guidelines/dotnetframework/project_simple.md",
           "targetRelPath": "AGENTS.md"
         },
         {
-          "language": "golang",
+          "language": "dotnetframework",
           "category": "proto",
-          "sourcePath": "guidelines/golang/proto.md",
+          "sourcePath": "guidelines/dotnetframework/proto.md",
           "targetRelPath": "proto/AGENTS.md"
         }
       ]
