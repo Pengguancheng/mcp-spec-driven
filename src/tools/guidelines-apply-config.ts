@@ -83,6 +83,7 @@ export async function applyConfig(
   const overall = { added: 0, updated: 0, skipped: 0, conflict: 0 };
 
   for (const t of targets) {
+    const relPath = t.targetRelPath;
     const res = await placeGuidelines({
       language: t.language,
       tool: t.tool,
@@ -90,10 +91,10 @@ export async function applyConfig(
       files: [
         {
           sourcePath: t.sourcePathAbs,
-          targetFileName: t.targetFileName,
+          targetProjectDirAbs: t.projectRootDir,
+          targetRelPath: relPath,
         },
       ],
-      targetDirAbs: t.targetBaseDir,
       addManagedHeader: merged.addManagedHeader,
       dryRun: merged.dryRun,
       backup: merged.backup,

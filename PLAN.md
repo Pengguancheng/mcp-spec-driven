@@ -18,7 +18,7 @@
         - 依設定檔呼叫 `placeGuidelines`，彙總多個 target 的結果；
         - 回傳總結（per-target 與 overall）。
     - `src/server.ts`
-        - 註冊 MCP tools：`guidelines.place`（既有）、`guidelines.applyConfig`（新增）。
+        - 註冊 MCP tools：`guidelines.applyConfig`、`guidelines.applyLanguage`（language + projectPath）。
 
 ## Technology Choices (with rationale)
 
@@ -40,6 +40,7 @@
         category: string; // 動態，允許 [a-z0-9-]
         sourcePath: string; // 單一檔案來源
         targetDirAbs?: string; // 覆寫目標根目錄，必為絕對路徑（若提供）
+        targetDirRel?: string; // 覆寫於專案根下的相對目錄（若提供）
         fileNameByTool?: Record<string, string>; // 例如 { "codex-cli": "AGENTS.md" }
         defaultFileName?: string; // 未匹配 tool 的預設檔名（預設 README.md）
       }>;
@@ -64,10 +65,19 @@
         overall: { added: number; updated: number; skipped: number; conflict: number };
       }`
 
+- MCP tool：`guidelines.applyLanguage`
+    - Input：
+      `{ language: string; projectPath: string; overrides?: { addManagedHeader?: boolean; dryRun?: boolean; backup?: boolean; force?: boolean } }`
+    - 規則：
+        - 預設設定檔：`settings/guidelines-<language>.json`。
+        - 於載入後，將每個 `project` 注入 `absoluteProjectDir = projectPath`，並清空 `packageName` 避免路徑推導歧義。
+        - `projectPath` 必須為絕對路徑；若傳入相對路徑，直接回報錯誤（不做自動轉換）。
+    - Output：同 `guidelines.applyConfig`。
+
 ## Integration Points and External Dependencies
 
 - 與 `src/server.ts` 整合：
-    - 新增 `guidelines.applyConfig` 註冊與 Zod input schema；
+    - 新增 `guidelines.applyConfig` 與 `guidelines.applyLanguage` 註冊與 Zod input schema；
     - 工具執行期間，Log 使用英文，錯誤以 actionable 訊息回傳。
 - 依賴 `guidelines-placer.ts` 作為唯一寫入執行器，避免重複邏輯。
 - AGENTS.md 約束：ESM、嚴格型別、命名匯出、中文註解/英文 Log 與 Conventional Commits。
@@ -87,7 +97,8 @@
     - 建立 `src/tools/guidelines-apply-config.ts`：呼叫 `placeGuidelines`，彙總輸出；
     - 測試：dry-run/backup/force 聚合統計。
 5. 伺服器整合
-    - `src/server.ts` 註冊 `guidelines.applyConfig`；
+    - `src/server.ts` 註冊 `guidelines.applyConfig` 與 `guidelines.applyLanguage`；
+    - `guidelines.applyLanguage` 驗證 `projectPath`（必須為絕對路徑），讀入預設設定檔並注入專案路徑；
     - 基本回歸測試（工具可被呼叫、輸入/輸出符合 schema）。
 6. 文件與範例
     - SPEC.md 已更新 Domain Model；

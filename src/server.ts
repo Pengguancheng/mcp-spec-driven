@@ -174,14 +174,16 @@ export class Server {
       },
     );
 
-    // 注册工具：guidelines.applyLanguage（僅以語言套用預設設定）
+    // 注册工具：guidelines.applyLanguage（以語言 + 專案路徑套用預設設定）
     this.mcp.registerTool(
       'guidelines.applyLanguage',
       {
         title: 'Guidelines Apply by Language',
-        description: 'Apply predefined guidelines config by language only',
+        description:
+          'Apply predefined guidelines config by language and project path',
         inputSchema: {
           language: z.string(),
+          projectPath: z.string(),
           overrides: z
             .object({
               addManagedHeader: z.boolean().optional(),
@@ -193,21 +195,42 @@ export class Server {
             .optional(),
         },
       },
-      async ({ language, overrides }) => {
+      async ({ language, projectPath, overrides }) => {
         try {
           const lang = String(language).trim().toLowerCase();
-          // 預設 config 路徑：docs/examples/guidelines-<language>.json
+          const projPathRaw = String(projectPath || '').trim();
+          // 嚴格要求：必須為絕對路徑，若為相對路徑直接回報錯誤
+          if (!path.isAbsolute(projPathRaw)) {
+            throw new Error('projectPath must be an absolute path');
+          }
+          const projAbs = projPathRaw;
+          // 預設 config 路徑：settings/guidelines-<language>.json
+          // 使用模組檔案位置推導專案根，避免受啟動時的 CWD 影響
           const configPath = path.join(
             process.cwd(),
-            'docs',
-            'examples',
+            'settings',
             `guidelines-${lang}.json`,
           );
+          // 讀入預設設定並注入目標專案路徑（absoluteProjectDir）
+          const raw = await fs.readFile(configPath, 'utf8');
+          const cfg = JSON.parse(raw);
+          if (!cfg || !Array.isArray(cfg.projects)) {
+            throw new Error('Invalid language config: projects not found');
+          }
+          const cfgWithProject = {
+            ...cfg,
+            projects: cfg.projects.map((p: any) => ({
+              ...p,
+              absoluteProjectDir: projAbs,
+              // 清除 packageName 以避免路徑推導歧義
+              packageName: undefined,
+            })),
+          };
           // 預設工具識別：codex-cli（符合本專案用途）
           const toolId = 'codex-cli';
           const result = await runApplyConfigTool({
             tool: toolId,
-            configPath,
+            configObject: cfgWithProject,
             overrides,
           });
           return {

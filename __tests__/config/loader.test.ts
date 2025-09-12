@@ -15,7 +15,12 @@ describe('config loader and expander', () => {
           packageName: 'pkg-a',
           absoluteProjectDir: '/abs/project',
           targets: [
-            { language: 'golang', category: 'project', sourcePath: 'a.md' },
+            {
+              language: 'golang',
+              category: 'project',
+              sourcePath: 'a.md',
+              targetRelPath: 'docs/guidelines/README.md',
+            },
           ],
         },
       ],
@@ -28,9 +33,7 @@ describe('config loader and expander', () => {
       repoRootDir: repoRoot,
     });
     expect(t.projectRootDir).toBe('/abs/project');
-    expect(t.targetBaseDir).toBe(
-      '/abs/project/guidelines/golang/codex-cli/project',
-    );
+    expect(t.targetBaseDir).toBe('/abs/project/docs/guidelines');
     expect(t.sourcePathAbs).toBe('/cfg/a.md');
     expect(t.targetFileName).toBe('README.md');
   });
@@ -47,13 +50,19 @@ describe('config loader and expander', () => {
               language: 'typescript',
               category: 'repository',
               sourcePath: '/abs/s.md',
+              targetRelPath: 'docs/repo/README.md',
             },
           ],
         },
         {
           name: 'p3',
           targets: [
-            { language: 'python', category: 'handler', sourcePath: 'h.md' },
+            {
+              language: 'python',
+              category: 'handler',
+              sourcePath: 'h.md',
+              targetRelPath: 'docs/handler/guide.md',
+            },
           ],
         },
       ],
@@ -68,16 +77,14 @@ describe('config loader and expander', () => {
     const t2 = targets.find((x) => x.projectName === 'p2')!;
     const t3 = targets.find((x) => x.projectName === 'p3')!;
     expect(t2.projectRootDir).toBe('/repo/packages/x');
-    expect(t2.targetBaseDir).toBe(
-      '/repo/packages/x/guidelines/typescript/codex-cli/repository',
-    );
+    expect(t2.targetBaseDir).toBe('/repo/packages/x/docs/repo');
     expect(t2.sourcePathAbs).toBe('/abs/s.md');
     expect(t3.projectRootDir).toBe('/repo');
-    expect(t3.targetBaseDir).toBe('/repo/guidelines/python/codex-cli/handler');
+    expect(t3.targetBaseDir).toBe('/repo/docs/handler');
     expect(t3.sourcePathAbs).toBe('/cfg/h.md');
   });
 
-  it('respects targetDirAbs override and filename mapping', () => {
+  it('uses targetRelPath to decide base dir and file name', () => {
     const obj = {
       version: 1,
       projects: [
@@ -89,11 +96,7 @@ describe('config loader and expander', () => {
               language: 'golang',
               category: 'domain-model',
               sourcePath: 'd.md',
-              targetDirAbs: '/override/dir',
-              defaultFileName: 'README.md',
-              fileNameByTool: {
-                'codex-cli': 'AGENTS.md',
-              },
+              targetRelPath: 'custom/place/AGENTS.md',
             },
           ],
         },
@@ -106,7 +109,7 @@ describe('config loader and expander', () => {
       configBaseDir: baseDir,
       repoRootDir: repoRoot,
     });
-    expect(t.targetBaseDir).toBe('/override/dir');
+    expect(t.targetBaseDir).toBe('/abs/y/custom/place');
     expect(t.targetFileName).toBe('AGENTS.md');
   });
 });

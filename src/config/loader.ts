@@ -49,6 +49,7 @@ export interface ExpandedTarget {
   tool: string;
   category: string;
   sourcePathAbs: string;
+  targetRelPath: string;
   targetBaseDir: string;
   targetFileName: string;
 }
@@ -79,13 +80,12 @@ export function expandConfig(opts: ExpandOptions): ExpandedTarget[] {
       const sourcePathAbs = path.isAbsolute(t.sourcePath)
         ? t.sourcePath
         : path.join(opts.configBaseDir, t.sourcePath);
-      const targetBaseDir = t.targetDirAbs
-        ? t.targetDirAbs
-        : path.join(projectRootDir, 'guidelines', language, toolId, category);
-      const targetFileName =
-        (t.fileNameByTool && t.fileNameByTool[toolId]) ||
-        t.defaultFileName ||
-        'README.md';
+      const targetRelPath = t.targetRelPath;
+      const targetBaseDir = path.join(
+        projectRootDir,
+        path.dirname(targetRelPath),
+      );
+      const targetFileName = path.basename(targetRelPath);
 
       out.push({
         projectName: proj.name,
@@ -94,6 +94,7 @@ export function expandConfig(opts: ExpandOptions): ExpandedTarget[] {
         tool: toolId,
         category,
         sourcePathAbs,
+        targetRelPath,
         targetBaseDir,
         targetFileName,
       });

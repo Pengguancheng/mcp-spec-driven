@@ -6,7 +6,7 @@
   AI coding tool（例如 Codex CLI、JetBrains AI…）× 類別（project/repository/handler/domain-model）」的維度，放置到正確的目錄結構中。
 - MVP 範圍：僅負責「放置」與「安全更新」；不自動產生內容、不從既有文件抽取/合成內容。
 - 支援單一倉庫與 monorepo（packages/*）。
-- 備註：本階段不提供任何新的 MCP 方法；若未來需要，將直接在本專案中新增或調整。
+- 提供 MCP tools：`guidelines.applyConfig` 與 `guidelines.applyLanguage`。
 
 ## Goals
 
@@ -73,7 +73,8 @@
       targets: Array<{
         language: string;              // 例如 csharp / golang / typescript
         category: string;              // 「guideline 類別」可動態新增，例如 project/repository/.../自定
-        targetDirAbs?: string;         // 「目錄的絕對路徑」；若提供則直接寫入此目錄（覆寫預設 guidelines/... 路徑）
+        targetDirAbs?: string;         // 「目錄的絕對路徑」；若提供則直接寫入此目錄（覆寫預設路徑）
+        targetDirRel?: string;         // 「相對於專案根的目錄路徑」；若提供則寫入 <projectRoot>/<targetDirRel>
         sourcePath: string;            // 單一 Markdown 來源檔（相對或絕對）
         fileNameByTool?: Record<string, string>; // 依 tool 指定檔名（例如 { "codex-cli": "AGENTS.md" }）
         defaultFileName?: string;      // 未匹配 tool 時的預設檔名（預設 README.md）
@@ -81,7 +82,8 @@
     }>`
 - 預設寫入目錄：若 `targetDirAbs` 未提供，則：
     - 根據 `absoluteProjectDir`（若提供）或 `packages/<packageName>`（若提供）或 repo 根目錄，推導 `projectRoot`。
-    - 目標目錄：`<projectRoot>/guidelines/<language>/<tool>/<category>`（tool 由客戶端請求帶入，例如 `codex-cli`）。
+  - 如提供 `targetDirRel`，目標目錄：`<projectRoot>/<targetDirRel>`；否則為
+    `<projectRoot>/guidelines/<language>/<tool>/<category>`（tool 由客戶端請求帶入，例如 `codex-cli`）。
 - 範例：
   ```json
   {
@@ -127,6 +129,7 @@
     - `absoluteProjectDir` 與 `targetDirAbs` 必須為絕對路徑；
     - `sourcePath` 可相對或絕對；相對路徑以「設定檔所在目錄」為基準（若以 MCP 傳 `configObject`，則以 `process.cwd()` 為基準）。
 - 專案位置優先序：`absoluteProjectDir` > `packageName` > repo 根目錄。
+- 目標目錄優先序：`targetDirAbs` > `targetDirRel` > `<projectRoot>/guidelines/<language>/<tool>/<category>`。
 - 必填驗證：
     - `projects` 非空；每個 `project.targets` 非空；每個 target 的 `sourcePath` 必填；
     - `language`/`category` 不可為空字串；
@@ -135,7 +138,8 @@
     - `ConfigRoot`：`version: number`、`defaults?: Defaults`、`projects: ProjectConfig[]`
     - `Defaults`：`addManagedHeader?`、`dryRun?`、`backup?`、`force?`
     - `ProjectConfig`：`name: string`、`packageName?: string`、`absoluteProjectDir?: string`、`targets: TargetConfig[]`
-    - `TargetConfig`：`language: string`、`category: string`、`sourcePath: string`、`targetDirAbs?: string`、
+  - `TargetConfig`：`language: string`、`category: string`、`sourcePath: string`、`targetDirAbs?: string`、
+    `targetDirRel?: string`、
       `fileNameByTool?: Record<string, string>`、`defaultFileName?: string`
 - JSON Schema（簡化草案）：
     - `$schema: https://json-schema.org/draft/2020-12/schema`；
@@ -148,12 +152,34 @@
     - `Invalid target file name for tool '<id>'`；
     - `Either packageName or absoluteProjectDir is required`（若策略要求至少一者）。
 
+- 與寫入引擎（placer）的契合：
+    - 寫入引擎以「專案絕對路徑 + 檔案相對路徑」定位目標檔；
+    - expandConfig 會把設定轉為 placer 需要的 `targetRelPath`：
+        - 先決定 `projectRootDir`（依專案位置優先序），再決定 `targetBaseDir`（依目標目錄優先序）；
+        - 檔名：以 `fileNameByTool[tool]` 優先，否則 `defaultFileName`，預設 `README.md`；
+        - `targetRelPath = relative(projectRootDir, join(targetBaseDir, targetFileName))`；
+        - 呼叫 placer 時傳入：`{ targetProjectDirAbs: projectRootDir, targetRelPath }`。
+
 6) MCP tools
 
-- 本階段不提供對應 MCP tools。未來如需，預計提供：
-    - `guidelines.place`（單一目標放置）
-    - `guidelines.applyConfig`（以設定檔批次放置）
-      二者的介面與行為可依本規格延伸。
+- `guidelines.applyConfig`
+    - Input：
+        - `tool: string` — 工具識別（例如 `codex-cli`）。
+        - `configPath?: string` — 設定檔路徑（JSON），或改用 `configObject`。
+        - `configObject?: unknown` — 直接提供已解析物件。
+        - `overrides?: { addManagedHeader?: boolean; dryRun?: boolean; backup?: boolean; force?: boolean }`
+    - Output：整體與 per-target 的新增/更新/跳過/衝突統計與目標路徑。
+
+- `guidelines.applyLanguage`
+    - 目的：僅需提供「語言」與「目標專案路徑」，即套用預設的該語言 guidelines 設定。
+    - 預設設定檔位置：`settings/guidelines-<language>.json`。
+    - Input：
+        - `language: string` — 程式語言（小寫/中線）。
+        - `projectPath: string` — 目標專案路徑（必須為絕對路徑；若為相對路徑，將回報錯誤）。
+        - `overrides?: { addManagedHeader?: boolean; dryRun?: boolean; backup?: boolean; force?: boolean }`
+    - 行為：載入預設設定，將其中每個 project 注入 `absoluteProjectDir=projectPath`（並清空 `packageName` 以避免歧義），再呼叫
+      `applyConfig`。
+    - Output：等同 `guidelines.applyConfig`。
 
 6) 回報與可觀測性
 
@@ -182,7 +208,7 @@
     - 指定專案位置（`packageName` 或 `absoluteProjectDir`）；
     - 覆寫目標目錄絕對路徑（`targetDirAbs`）；
     - 指定單一 guidelines Markdown 檔案路徑（`sourcePath`）。
-- PLAN.md 說明未來若實作 MCP tools 的落地方案；但本階段不包含任何 MCP 端點實作。
+- PLAN.md 與 SPEC.md 與實作一致，文件包含 `guidelines.applyLanguage` 的 `projectPath` 參數定義與行為說明。
 
 ## Open Questions
 

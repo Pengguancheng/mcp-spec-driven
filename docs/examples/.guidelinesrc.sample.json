@@ -14,10 +14,7 @@
           "language": "golang",
           "category": "project",
           "sourcePath": "docs/golang/project.md",
-          "defaultFileName": "README.md",
-          "fileNameByTool": {
-            "codex-cli": "AGENTS.md"
-          }
+          "targetRelPath": "guidelines/golang/project/AGENTS.md"
         }
       ]
     },
@@ -29,7 +26,7 @@
           "language": "typescript",
           "category": "repository",
           "sourcePath": "../shared/repo-guidelines.md",
-          "targetDirAbs": "/opt/workspace/packages/foo/guidelines/typescript/codex-cli/repository"
+          "targetRelPath": "guidelines/typescript/repository/README.md"
         }
       ]
     },
@@ -40,7 +37,8 @@
         {
           "language": "python",
           "category": "handler",
-          "sourcePath": "/opt/specs/handler.md"
+          "sourcePath": "/opt/specs/handler.md",
+          "targetRelPath": "guidelines/python/handler/README.md"
         }
       ]
     }

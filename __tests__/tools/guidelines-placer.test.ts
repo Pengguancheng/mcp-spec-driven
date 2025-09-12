@@ -23,11 +23,19 @@ describe('guidelines-placer', () => {
   test('dry-run: added should not write', async () => {
     const { dir, restore } = await makeTempCwd('dry-run-');
     try {
+      const projectRoot = path.join(dir, 'work');
+      await fs.mkdir(projectRoot, { recursive: true });
       const res = await placeGuidelines({
         language: 'typescript',
         tool: 'codex-cli',
         category: 'project',
-        files: [{ content: '# Title', targetFileName: 'README.md' }],
+        files: [
+          {
+            content: '# Title',
+            targetProjectDirAbs: projectRoot,
+            targetRelPath: 'guidelines/typescript/codex-cli/project/README.md',
+          },
+        ],
         addManagedHeader: true,
         dryRun: true,
       });
@@ -37,7 +45,10 @@ describe('guidelines-placer', () => {
       expect(res.skipped).toBe(0);
       expect(res.conflict).toBe(0);
 
-      const target = path.join(res.targetBaseDir, 'README.md');
+      const target = path.join(
+        projectRoot,
+        'guidelines/typescript/codex-cli/project/README.md',
+      );
       await expect(fs.stat(target)).rejects.toBeTruthy();
     } finally {
       restore();
@@ -49,16 +60,25 @@ describe('guidelines-placer', () => {
     const { dir, restore } = await makeTempCwd('update-');
     try {
       // 先寫入一份舊檔
+      const projectRoot = path.join(dir, 'work');
+      await fs.mkdir(projectRoot, { recursive: true });
+      const rel = 'guidelines/typescript/codex-cli/project/README.md';
       const res1 = await placeGuidelines({
         language: 'typescript',
         tool: 'codex-cli',
         category: 'project',
-        files: [{ content: 'v1', targetFileName: 'README.md' }],
+        files: [
+          {
+            content: 'v1',
+            targetProjectDirAbs: projectRoot,
+            targetRelPath: rel,
+          },
+        ],
         addManagedHeader: false,
         dryRun: false,
       });
       expect(res1.added).toBe(1);
-      const target = path.join(res1.targetBaseDir, 'README.md');
+      const target = path.join(projectRoot, rel);
       expect((await fs.readFile(target, 'utf8')).trim()).toBe('v1');
 
       // 再以不同內容但不 force：應 conflict 不改動
@@ -66,7 +86,13 @@ describe('guidelines-placer', () => {
         language: 'typescript',
         tool: 'codex-cli',
         category: 'project',
-        files: [{ content: 'v2', targetFileName: 'README.md' }],
+        files: [
+          {
+            content: 'v2',
+            targetProjectDirAbs: projectRoot,
+            targetRelPath: rel,
+          },
+        ],
         addManagedHeader: false,
         dryRun: false,
         force: false,
@@ -80,7 +106,13 @@ describe('guidelines-placer', () => {
         language: 'typescript',
         tool: 'codex-cli',
         category: 'project',
-        files: [{ content: 'v3', targetFileName: 'README.md' }],
+        files: [
+          {
+            content: 'v3',
+            targetProjectDirAbs: projectRoot,
+            targetRelPath: rel,
+          },
+        ],
         addManagedHeader: false,
         dryRun: false,
         force: true,
@@ -98,11 +130,19 @@ describe('guidelines-placer', () => {
   test('skip identical when content unchanged (with header)', async () => {
     const { dir, restore } = await makeTempCwd('identical-');
     try {
+      const projectRoot = path.join(dir, 'work');
+      await fs.mkdir(projectRoot, { recursive: true });
       const input = {
         language: 'typescript',
         tool: 'codex-cli',
         category: 'project',
-        files: [{ content: '# Same', targetFileName: 'README.md' }],
+        files: [
+          {
+            content: '# Same',
+            targetProjectDirAbs: projectRoot,
+            targetRelPath: 'guidelines/typescript/codex-cli/project/README.md',
+          },
+        ],
         addManagedHeader: true,
         dryRun: false,
       } as const;
@@ -121,20 +161,60 @@ describe('guidelines-placer', () => {
   test('managed header contains checksum and placed at top', async () => {
     const { dir, restore } = await makeTempCwd('header-');
     try {
+      const projectRoot = path.join(dir, 'work');
+      await fs.mkdir(projectRoot, { recursive: true });
       const res = await placeGuidelines({
         language: 'typescript',
         tool: 'codex-cli',
         category: 'project',
-        files: [{ content: 'Hello World', targetFileName: 'GUIDE.md' }],
+        files: [
+          {
+            content: 'Hello World',
+            targetProjectDirAbs: projectRoot,
+            targetRelPath: 'guidelines/typescript/codex-cli/project/GUIDE.md',
+          },
+        ],
         addManagedHeader: true,
         dryRun: false,
       });
-      const p = path.join(res.targetBaseDir, 'GUIDE.md');
+      const p = path.join(
+        projectRoot,
+        'guidelines/typescript/codex-cli/project/GUIDE.md',
+      );
       const text = await fs.readFile(p, 'utf8');
       const firstLine = text.split('\n')[0];
       expect(
         firstLine.startsWith('<!-- managed-by: mcp-spec-driven; checksum: '),
       ).toBe(true);
+    } finally {
+      restore();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('place using project abs path + relative file path', async () => {
+    const { dir, restore } = await makeTempCwd('proj-rel-');
+    try {
+      const projectRoot = path.join(dir, 'work');
+      await fs.mkdir(projectRoot, { recursive: true });
+      const res = await placeGuidelines({
+        language: 'golang',
+        tool: 'codex-cli',
+        category: 'project',
+        files: [
+          {
+            content: 'Custom Path',
+            targetProjectDirAbs: projectRoot,
+            targetRelPath: 'docs/guides/README.md',
+          },
+        ],
+        addManagedHeader: false,
+        dryRun: false,
+      });
+      expect(res.added).toBe(1);
+      const p = path.join(projectRoot, 'docs/guides/README.md');
+      const text = await fs.readFile(p, 'utf8');
+      expect(text).toBe('Custom Path');
     } finally {
       restore();
       await fs.rm(dir, { recursive: true, force: true });

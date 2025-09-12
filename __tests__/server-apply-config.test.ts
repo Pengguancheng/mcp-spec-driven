@@ -12,7 +12,12 @@ describe('server tool: guidelines.applyConfig', () => {
         {
           name: 'p1',
           targets: [
-            { language: 'ts', category: 'project', sourcePath: 'a.md' },
+            {
+              language: 'ts',
+              category: 'project',
+              sourcePath: 'a.md',
+              targetRelPath: 'docs/sample/README.md',
+            },
           ],
         },
       ],

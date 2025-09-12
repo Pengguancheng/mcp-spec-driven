@@ -14,64 +14,63 @@
           "language": "golang",
           "category": "applibs",
           "sourcePath": "guidelines/golang/applibs.md",
-          "defaultFileName": "README.md"
+          "targetRelPath": "applibs/AGENTS.md"
         },
         {
           "language": "golang",
           "category": "app-context",
           "sourcePath": "guidelines/golang/app_context.md",
-          "defaultFileName": "README.md"
+          "targetRelPath": "app/AGENTS.md"
         },
         {
           "language": "golang",
           "category": "config",
           "sourcePath": "guidelines/golang/config.md",
-          "defaultFileName": "README.md"
+          "targetRelPath": "config/AGENTS.md"
         },
         {
           "language": "golang",
           "category": "domain-model",
           "sourcePath": "guidelines/golang/domain_model.md",
-          "defaultFileName": "README.md"
+          "targetRelPath": "domain/model/AGENTS.md"
         },
         {
           "language": "golang",
           "category": "domain-repository",
           "sourcePath": "guidelines/golang/domain_repository.md",
-          "defaultFileName": "README.md"
+          "targetRelPath": "domain/repository/AGENTS.md"
         },
         {
           "language": "golang",
           "category": "handler",
           "sourcePath": "guidelines/golang/handler.md",
-          "defaultFileName": "README.md"
+          "targetRelPath": "handler/AGENTS.md"
         },
         {
           "language": "golang",
           "category": "persistent-mongo",
           "sourcePath": "guidelines/golang/persistent_mongo.md",
-          "defaultFileName": "README.md"
+          "targetRelPath": "persistent/persistent_mongo/AGENTS.md"
         },
         {
           "language": "golang",
           "category": "procedure",
           "sourcePath": "guidelines/golang/procedure.md",
-          "defaultFileName": "README.md"
+          "targetRelPath": "procedure/AGENTS.md"
         },
         {
           "language": "golang",
           "category": "project",
           "sourcePath": "guidelines/golang/project.md",
-          "defaultFileName": "README.md"
+          "targetRelPath": "AGENTS.md"
         },
         {
           "language": "golang",
           "category": "proto",
           "sourcePath": "guidelines/golang/proto.md",
-          "defaultFileName": "README.md"
+          "targetRelPath": "proto/AGENTS.md"
         }
       ]
     }
   ]
 }
-

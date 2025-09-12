@@ -32,6 +32,7 @@ describe('guidelines-apply-config', () => {
                 language: 'typescript',
                 category: 'project',
                 sourcePath: 'a.md',
+                targetRelPath: 'docs/ts/README.md',
               },
             ],
           },
@@ -42,6 +43,7 @@ describe('guidelines-apply-config', () => {
                 language: 'golang',
                 category: 'repository',
                 sourcePath: 'b.md',
+                targetRelPath: 'docs/go/README.md',
               },
             ],
           },
@@ -56,13 +58,13 @@ describe('guidelines-apply-config', () => {
       });
       expect(r1.overall.added).toBe(2);
       // 確認實際未寫入
-      for (const t of r1.targets) {
-        const p = path.join(
-          t.targetBaseDir,
-          t.language === 'typescript' ? 'README.md' : 'README.md',
-        );
-        await expect(fs.stat(p)).rejects.toBeTruthy();
-      }
+      // 確認實際未寫入（使用我們指定的 targetRelPath）
+      await expect(
+        fs.stat(path.join(process.cwd(), 'docs/ts/README.md')),
+      ).rejects.toBeTruthy();
+      await expect(
+        fs.stat(path.join(process.cwd(), 'docs/go/README.md')),
+      ).rejects.toBeTruthy();
 
       // 第二次：實際寫入（added）
       const r2 = await applyConfig({ tool: 'codex-cli', configObject });

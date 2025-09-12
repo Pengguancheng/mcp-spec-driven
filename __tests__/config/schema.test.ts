@@ -14,14 +14,7 @@ describe('Config schema', () => {
               language: 'golang',
               category: 'project',
               sourcePath: 'docs/guide.md',
-              targetDirAbs: path.resolve(
-                process.cwd(),
-                'guidelines/golang/codex-cli/project',
-              ),
-              defaultFileName: 'README.md',
-              fileNameByTool: {
-                'codex-cli': 'AGENTS.md',
-              },
+              targetRelPath: 'guidelines/golang/project/AGENTS.md',
             },
           ],
         },
@@ -59,7 +52,7 @@ describe('Config schema', () => {
     }
   });
 
-  it('requires absolute absoluteProjectDir and targetDirAbs', () => {
+  it('requires absolute absoluteProjectDir and relative targetRelPath', () => {
     const bad = {
       version: 1,
       projects: [
@@ -71,7 +64,7 @@ describe('Config schema', () => {
               language: 'golang',
               category: 'project',
               sourcePath: 'a.md',
-              targetDirAbs: 'relative/dir',
+              targetRelPath: '/abs/should-not-be-absolute.md',
             },
           ],
         },
@@ -83,7 +76,7 @@ describe('Config schema', () => {
     } catch (e: any) {
       const msg = String(e.message);
       expect(msg).toContain('absoluteProjectDir must be an absolute path');
-      expect(msg).toContain('targetDirAbs must be an absolute path');
+      expect(msg).toContain('targetRelPath must be a relative path');
     }
   });
 
@@ -110,32 +103,5 @@ describe('Config schema', () => {
     }
   });
 
-  it('rejects invalid fileNameByTool keys and values', () => {
-    const bad = {
-      version: 1,
-      projects: [
-        {
-          name: 'demo',
-          targets: [
-            {
-              language: 'golang',
-              category: 'project',
-              sourcePath: 'x.md',
-              fileNameByTool: {
-                'Codex-CLI': 'bad/name.md',
-              },
-            },
-          ],
-        },
-      ],
-    };
-    try {
-      ConfigRootSchema.parse(bad);
-      throw new Error('should fail');
-    } catch (e: any) {
-      const msg = String(e.message);
-      expect(msg).toContain('Invalid tool id: must match /^[a-z0-9-]+$/');
-      expect(msg).toContain("Invalid target file name for tool 'Codex-CLI'");
-    }
-  });
+  // 移除 fileNameByTool/defaultFileName 與 targetDirAbs/Rel 的驗證，改以 targetRelPath 直接指定完整相對路徑
 });

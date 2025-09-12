@@ -16,8 +16,16 @@ export interface PlaceFileSpec {
   sourcePath?: string;
   /** 直接提供內容（二擇一） */
   content?: string;
-  /** 目標檔名（可省略，預設取 sourcePath 的 basename，皆無時為 README.md） */
-  targetFileName?: string;
+
+  /**
+   * 目標定位（新行為，無向下相容）：必須指定「專案絕對路徑 + 檔案相對路徑」。
+   * - 二者需同時提供；
+   * - targetProjectDirAbs 必須為絕對路徑；
+   * - targetRelPath 必須為相對路徑，可包含子資料夾；
+   * - 會經由 path.resolve 校正並防止路徑跳脫（..）。
+   */
+  targetProjectDirAbs: string;
+  targetRelPath: string;
 }
 
 // 放置請求
@@ -200,18 +208,27 @@ export async function placeGuidelines(
       throw new Error('Either content or sourcePath must be provided');
     }
 
-    const targetFileName = file.targetFileName
-      ? file.targetFileName
-      : file.sourcePath
-        ? path.basename(file.sourcePath)
-        : 'README.md';
-
-    if (targetFileName.includes('/') || targetFileName.includes('\\')) {
-      throw new Error('targetFileName must not contain path separators');
+    // 目標路徑解析（新行為，無向下相容）：必須指定專案絕對路徑 + 檔案相對路徑
+    if (!file.targetProjectDirAbs || !file.targetRelPath) {
+      throw new Error(
+        'Both targetProjectDirAbs and targetRelPath are required',
+      );
     }
+    if (!path.isAbsolute(file.targetProjectDirAbs)) {
+      throw new Error('targetProjectDirAbs must be an absolute path');
+    }
+    if (path.isAbsolute(file.targetRelPath)) {
+      throw new Error('targetRelPath must be a relative path');
+    }
+    const resolved = path.resolve(file.targetProjectDirAbs, file.targetRelPath);
+    // 防止路徑跳脫：確保 resolved 位於 targetProjectDirAbs 下
+    const relFromProject = path.relative(file.targetProjectDirAbs, resolved);
+    if (relFromProject.startsWith('..') || path.isAbsolute(relFromProject)) {
+      throw new Error('targetRelPath escapes project directory');
+    }
+    const targetPath = resolved;
 
     const toWrite = buildContent(rawContent, addHeader);
-    const targetPath = path.join(targetBaseDir, targetFileName);
 
     const existing = await readIfExists(targetPath);
 
@@ -263,7 +280,10 @@ export async function placeGuidelines(
 
   return {
     baseDir,
-    targetBaseDir,
+    // 以第一個檔案的資料夾作為 targetBaseDir（目前使用情境每次僅一檔）
+    targetBaseDir: results[0]
+      ? path.dirname(results[0].targetPath)
+      : targetBaseDir,
     results,
     added,
     updated,

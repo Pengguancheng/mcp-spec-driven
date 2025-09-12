@@ -15,14 +15,8 @@ const ID_PATTERN = /^[a-z0-9-]+$/;
 const ERR_INVALID_LANGUAGE = 'Invalid language: must match /^[a-z0-9-]+$/';
 const ERR_INVALID_CATEGORY = 'Invalid category: must match /^[a-z0-9-]+$/';
 const ERR_ABSOLUTE_PROJECT_DIR = 'absoluteProjectDir must be an absolute path';
-const ERR_TARGET_DIR_ABS = 'targetDirAbs must be an absolute path';
+const ERR_TARGET_REL_PATH = 'targetRelPath must be a relative path';
 const ERR_SOURCE_REQUIRED = 'Source path must be provided';
-
-// 驗證目標檔名（不得包含路徑分隔符）
-function isValidFileName(name: string): boolean {
-  if (!name) return false;
-  return !name.includes('/') && !name.includes('\\');
-}
 
 export const DefaultsSchema = z
   .object({
@@ -43,41 +37,11 @@ export const TargetConfigSchema = z
       .string()
       .min(1)
       .refine((v) => ID_PATTERN.test(v), { message: ERR_INVALID_CATEGORY }),
-    targetDirAbs: z
-      .string()
-      .optional()
-      .refine((v) => (v ? path.isAbsolute(v) : true), {
-        message: ERR_TARGET_DIR_ABS,
-      }),
     sourcePath: z.string({ required_error: ERR_SOURCE_REQUIRED }).min(1),
-    fileNameByTool: z
-      .record(z.string())
-      .optional()
-      .superRefine((obj, ctx) => {
-        if (!obj) return;
-        for (const [toolId, fileName] of Object.entries(obj)) {
-          if (!ID_PATTERN.test(toolId)) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: `Invalid tool id: must match /^[a-z0-9-]+$/`,
-              path: [toolId],
-            });
-          }
-          if (!isValidFileName(fileName)) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: `Invalid target file name for tool '${toolId}'`,
-              path: [toolId],
-            });
-          }
-        }
-      }),
-    defaultFileName: z
+    targetRelPath: z
       .string()
-      .optional()
-      .refine((v) => (v ? isValidFileName(v) : true), {
-        message: `Invalid default target file name`,
-      }),
+      .min(1)
+      .refine((v) => !path.isAbsolute(v), { message: ERR_TARGET_REL_PATH }),
   })
   .strict();
 
