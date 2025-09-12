@@ -66,22 +66,22 @@ try {
   // 若建立資料夾失敗，不中斷流程；僅讓檔案 transport 初始化時自行處理錯誤
 }
 
-const transports: winston.transport[] = [
-  // 主控台輸出（所有環境皆啟用）
-  new winston.transports.Console({ format: consoleFormat }),
-];
+const transports: winston.transport[] = [];
 
-// 測試環境外才寫檔，避免 CI/測試污染
-if ((process.env.NODE_ENV || '').toLowerCase() !== 'test') {
-  transports.push(
-    new winston.transports.File({
-      // 單一檔案收所有等級，不再依等級切分
-      filename: path.join(logDir, 'app.log'),
-      maxsize: 5 * 1024 * 1024, // 5MB
-      maxFiles: 5,
-      format: fileFormat,
-    }),
-  );
+// 所有環境一律寫檔
+transports.push(
+  new winston.transports.File({
+    // 單一檔案收所有等級，不再依等級切分
+    filename: path.join(logDir, 'app.log'),
+    maxsize: 5 * 1024 * 1024, // 5MB
+    maxFiles: 5,
+    format: fileFormat,
+  }),
+);
+
+// 僅測試環境使用主控台輸出（避免非測試環境污染 stdout/stderr）
+if ((process.env.NODE_ENV || '').toLowerCase() === 'test') {
+  transports.push(new winston.transports.Console({ format: consoleFormat }));
 }
 
 // 建立預設 logger

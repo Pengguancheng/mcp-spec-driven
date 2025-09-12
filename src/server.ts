@@ -173,8 +173,7 @@ export class Server {
         e &&
         (e.code === 'EPIPE' || e.code === 'ERR_STREAM_WRITE_AFTER_END')
       ) {
-        // eslint-disable-next-line no-console
-        console.warn(
+        logger.warn(
           `[${this.name}] stdio closed by host (${e.code}). Exiting gracefully.`,
         );
         process.exit(0);
@@ -185,8 +184,7 @@ export class Server {
 
     // 当宿主关闭 stdin 时退出
     const handleStdinClose = () => {
-      // eslint-disable-next-line no-console
-      console.warn(`[${this.name}] stdin closed by host. Exiting gracefully.`);
+      logger.warn(`[${this.name}] stdin closed by host. Exiting gracefully.`);
       process.exit(0);
     };
     process.stdin.on('close', handleStdinClose);
