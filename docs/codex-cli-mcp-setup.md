@@ -18,6 +18,20 @@
 作为基础，并与现有配置合并。
 
 配置片段（按你提供的内容保持不变）：
+
+```text
 [mcp_servers.spec-driven]
 command = "node"
-args = ["-y", "/mcp_server/mcp-spec-driven/dist/index.js"]
+args = ["/mcp_server/mcp-spec-driven/dist/index.js"]
+```
+
+```json
+{
+  "spec-driven": {
+    "command": "node",
+    "args": [
+      "dist/index.js"
+    ]
+  }
+}
+```
