@@ -4,11 +4,7 @@ import { z } from 'zod';
 import fs from 'fs/promises';
 import path from 'path';
 import logger from './utils/logger.js';
-import {
-  applyConfig as applyConfigRunner,
-  type ApplyConfigInput,
-  type ApplyConfigResult
-} from './tools/guidelines-apply-config.js';
+// 移除 guidelines 相關實作後，不再匯入 apply-config 相關程式碼
 
 const promptCache = new Map<string, string>();
 
@@ -139,159 +135,7 @@ export class Server {
       },
     );
 
-    //（已移除）guidelines.applyConfig 工具不再在此註冊
-
-    // 注册工具：guidelines.applyGolang（以 Golang + 專案路徑套用預設設定）
-    this.mcp.registerTool(
-      'guidelines.applyGolang',
-      {
-        title: 'Guidelines Apply Golang',
-        description:
-          'Apply predefined golang guidelines config by project path',
-        inputSchema: {
-          projectPath: z.string(),
-          overrides: z
-            .object({
-              addManagedHeader: z.boolean().optional(),
-              dryRun: z.boolean().optional(),
-              backup: z.boolean().optional(),
-              force: z.boolean().optional(),
-            })
-            .strict()
-            .optional(),
-        },
-      },
-      async ({ projectPath, overrides }) => {
-        try {
-          // 固定語言為 golang，無需外部參數
-          const lang = 'golang';
-          const projPathRaw = String(projectPath || '').trim();
-          // 嚴格要求：必須為絕對路徑，若為相對路徑直接回報錯誤
-          if (!path.isAbsolute(projPathRaw)) {
-            throw new Error('projectPath must be an absolute path');
-          }
-          const projAbs = projPathRaw;
-          // 預設 config 路徑：settings/guidelines-golang.json
-          // 使用模組檔案位置推導專案根，避免受啟動時的 CWD 影響
-          const configPath = path.join(
-            process.cwd(),
-            'settings',
-            `guidelines-${lang}.json`,
-          );
-          // 讀入預設設定並注入目標專案路徑（absoluteProjectDir）
-          const raw = await fs.readFile(configPath, 'utf8');
-          const cfg = JSON.parse(raw);
-          if (!cfg || !Array.isArray(cfg.projects)) {
-            throw new Error('Invalid language config: projects not found');
-          }
-          const cfgWithProject = {
-            ...cfg,
-            projects: cfg.projects.map((p: any) => ({
-              ...p,
-              absoluteProjectDir: projAbs,
-              // 清除 packageName 以避免路徑推導歧義
-              packageName: undefined,
-            })),
-          };
-          // 預設工具識別：codex-cli（符合本專案用途）
-          const toolId = 'codex-cli';
-          const result = await runApplyConfigTool({
-            tool: toolId,
-            configObject: cfgWithProject,
-            overrides,
-          });
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-          };
-        } catch (err) {
-          const msg = (err as Error).message || 'unknown error';
-          logger.error(`[apply-golang] failed: ${msg}`);
-          throw err;
-        }
-      },
-    );
-
-    // 注册工具：guidelines.applyDotnetframework（以 .NET Framework + 專案路徑與專案名稱套用預設設定）
-    this.mcp.registerTool(
-      'guidelines.applyDotnetframework',
-      {
-        title: 'Guidelines Apply Dotnetframework',
-        description:
-          'Apply predefined dotnetframework guidelines config by project path and name',
-        inputSchema: {
-          projectName: z.string(),
-          projectPath: z.string(),
-          overrides: z
-            .object({
-              addManagedHeader: z.boolean().optional(),
-              dryRun: z.boolean().optional(),
-              backup: z.boolean().optional(),
-              force: z.boolean().optional(),
-            })
-            .strict()
-            .optional(),
-        },
-      },
-      async ({ projectName, projectPath, overrides }) => {
-        try {
-          const lang = 'dotnetframework';
-          const projName = String(projectName || '').trim();
-          const projPathRaw = String(projectPath || '').trim();
-          if (!projName) {
-            throw new Error('projectName is required');
-          }
-          // 嚴格要求：必須為絕對路徑，若為相對路徑直接回報錯誤
-          if (!path.isAbsolute(projPathRaw)) {
-            throw new Error('projectPath must be an absolute path');
-          }
-          const projAbs = projPathRaw;
-          // 預設 config 路徑：settings/guidelines-dotnetframework.json
-          const configPath = path.join(
-            process.cwd(),
-            'settings',
-            `guidelines-${lang}.json`,
-          );
-          const raw = await fs.readFile(configPath, 'utf8');
-          const cfg = JSON.parse(raw);
-          if (!cfg || !Array.isArray(cfg.projects)) {
-            throw new Error('Invalid language config: projects not found');
-          }
-          // 置換 targetRelPath 中的 {{projectName}} 佔位符
-          const replaceProjectName = (s: string): string =>
-            s.replace(/\{\{\s*projectName\s*\}\}/g, projName);
-
-          const cfgWithProject = {
-            ...cfg,
-            projects: cfg.projects.map((p: any) => ({
-              ...p,
-              absoluteProjectDir: projAbs,
-              packageName: undefined,
-              targets: Array.isArray(p.targets)
-                ? p.targets.map((t: any) => ({
-                    ...t,
-                    targetRelPath: replaceProjectName(String(t.targetRelPath)),
-                  }))
-                : p.targets,
-            })),
-          };
-
-          // 預設工具識別：codex-cli（符合本專案用途）
-          const toolId = 'codex-cli';
-          const result = await runApplyConfigTool({
-            tool: toolId,
-            configObject: cfgWithProject,
-            overrides,
-          });
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-          };
-        } catch (err) {
-          const msg = (err as Error).message || 'unknown error';
-          logger.error(`[apply-dotnetframework] failed: ${msg}`);
-          throw err;
-        }
-      },
-    );
+    //（guidelines 工具已移除）
 
     // 通过 stdio 连接
     this.transport = new StdioServerTransport();
@@ -354,8 +198,4 @@ export async function startServer(config: ServerConfig = {}): Promise<Server> {
 /**
  * 導出可測試的執行函式（不依賴 MCP 連線）
  */
-export async function runApplyConfigTool(
-  args: ApplyConfigInput,
-): Promise<ApplyConfigResult> {
-  return applyConfigRunner(args);
-}
+//（guidelines 工具已移除：不再導出 runApplyConfigTool）
