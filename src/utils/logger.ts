@@ -63,8 +63,8 @@ const fileFormat = winston.format.combine(
 function createLogDir(): string {
   const possibleDirs = [
     path.join(process.cwd(), 'logs'), // 原預設位置
-    path.join(os.homedir(), 'Logfiles'), // ~/Logfiles
-    '/Logfiles', // /Logfiles
+    path.join(os.homedir(), 'Logfiles/mcp-spec-driven'), // ~/Logfiles
+    '/Logfiles/mcp-spec-driven', // /Logfiles
   ];
 
   for (const dir of possibleDirs) {
