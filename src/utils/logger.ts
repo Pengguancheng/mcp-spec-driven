@@ -1,6 +1,7 @@
 import winston from 'winston';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
 /**
  * 日誌工具：統一封裝應用程式的日誌行為
@@ -59,12 +60,32 @@ const fileFormat = winston.format.combine(
 );
 
 // 準備日誌檔路徑，必要時建立目錄
-const logDir = path.join(process.cwd(), 'logs');
-try {
-  if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
-} catch {
-  // 若建立資料夾失敗，不中斷流程；僅讓檔案 transport 初始化時自行處理錯誤
+function createLogDir(): string {
+  const possibleDirs = [
+    path.join(process.cwd(), 'logs'), // 原預設位置
+    path.join(os.homedir(), 'Logfiles'), // ~/Logfiles
+    '/Logfiles', // /Logfiles
+  ];
+
+  for (const dir of possibleDirs) {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      // 測試是否可寫入
+      fs.accessSync(dir, fs.constants.W_OK);
+      return dir;
+    } catch (error) {
+      // 若目錄建立或寫入失敗，繼續嘗試下一個
+      continue;
+    }
+  }
+
+  // 所有目錄都無法建立，回退到當前目錄
+  return process.cwd();
 }
+
+const logDir = createLogDir();
 
 const transports: winston.transport[] = [];
 
