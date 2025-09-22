@@ -62,7 +62,6 @@ const fileFormat = winston.format.combine(
 // 準備日誌檔路徑，必要時建立目錄
 function createLogDir(): string {
   const possibleDirs = [
-    path.join(process.cwd(), 'logs'), // 原預設位置
     path.join(os.homedir(), 'Logfiles/mcp-spec-driven'), // ~/Logfiles
     '/Logfiles/mcp-spec-driven', // /Logfiles
   ];
